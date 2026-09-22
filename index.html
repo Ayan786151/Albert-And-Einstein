@@ -364,53 +364,61 @@ function slater(cfg, orbital){
 
   if(lc==='s'||lc==='p'){
     // Slater's [ns,np] group: only s and p of SAME n count (not nd or nf)
-    // Exclude the electron itself
+    // Exclude the electron under consideration
     const sameShell=cfg.filter(c=>c.n===n && (c.l===0||c.l===1)).reduce((acc,c)=>{
-      if(c.l===l) return acc+c.c-1; // same orbital subtype: exclude self
+      if(c.l===l) return acc+c.c-1; // same subshell: exclude self
       return acc+c.c;              // other sp of same n (e.g. 2p for a 2s electron)
     },0);
     const sigma=(n===1)?0.30:0.35;
-    // Always show this step so students see every rule (even when contribution = 0)
-    {
-      const v=sameShell*sigma;
-      S+=v;
-      steps.push({
-        label:`Same [${n}s,${n>1?n+'p':'1s'}] Group`,
-        detail: sameShell>0
-          ? `${sameShell} electron${sameShell>1?'s':''} × ${sigma}`
-          : `0 electrons × ${sigma} (only electron in this group)`,
-        val:v,
-        col:'cyan'
-      });
-    }
+    const v_same=parseFloat((sameShell*sigma).toFixed(2));
+    S+=v_same;
+    steps.push({
+      label:`Same [${n}s,${n>1?n+'p':'1s'}] Group`,
+      detail: sameShell>0
+        ? `${sameShell} other electron${sameShell>1?'s':''} × ${sigma}`
+        : `0 other electrons × ${sigma} (only electron in this group)`,
+      val:v_same,
+      col:'cyan'
+    });
 
-    // (n-1) shell → 0.85  (includes ns, np, nd, nf of shell n-1)
-    const nm1=cfg.filter(c=>c.n===n-1).reduce((a,c)=>a+c.c,0);
+    // (n-1) shell → 0.85 (includes ns, np, nd, nf of shell n-1)
     if(n>1){
-      const v=nm1*0.85;
-      S+=v;
+      const nm1=cfg.filter(c=>c.n===n-1).reduce((a,c)=>a+c.c,0);
+      const v_nm1=parseFloat((nm1*0.85).toFixed(2));
+      S+=v_nm1;
       steps.push({
-        label:`Shell n\u22121 (n = ${n-1})`,
+        label:`Shell n − 1 (n = ${n-1})`,
         detail: nm1>0
           ? `${nm1} electron${nm1>1?'s':''} × 0.85`
           : `0 electrons in shell ${n-1}`,
-        val:v,
+        val:v_nm1,
         col:'blue'
       });
     }
 
-    // (n-2) and lower shells → 1.00
-    const inner=cfg.filter(c=>c.n<=n-2).reduce((a,c)=>a+c.c,0);
+    // (n-2) and lower shells → 1.00 each
     if(n>2){
-      const v=inner*1.00;
-      S+=v;
+      const inner=cfg.filter(c=>c.n<=n-2).reduce((a,c)=>a+c.c,0);
+      const v_in=parseFloat((inner*1.00).toFixed(2));
+      S+=v_in;
       steps.push({
-        label:`Inner Shells (n \u2264 ${n-2})`,
+        label:`Inner Shells (n ≤ ${n-2})`,
         detail: inner>0
           ? `${inner} electron${inner>1?'s':''} × 1.00`
-          : `0 electrons in shells \u2264 ${n-2}`,
-        val:v,
+          : `0 electrons in shells ≤ ${n-2}`,
+        val:v_in,
         col:'purple'
+      });
+    }
+
+    // Outer electrons (higher n or higher Slater group) → 0.00 (no shielding)
+    const outer=cfg.filter(c=>c.n>n || (c.n===n && c.l>1)).reduce((a,c)=>a+c.c,0);
+    if(outer>0){
+      steps.push({
+        label:`Outer Electrons (n > ${n})`,
+        detail:`${outer} electron${outer>1?'s':''} × 0.00 (outer shell, no shielding)`,
+        val:0.00,
+        col:'slate'
       });
     }
 
@@ -418,15 +426,17 @@ function slater(cfg, orbital){
     // ── d or f electron ──
     // Slater's rules: same group → 0.35; all groups to the LEFT in
     // Slater's canonical order → 1.00; groups to the right → 0.00
-    // NOTE: We use SLATER_DF order, NOT the Aufbau fill order.
-    // e.g. 4s fills before 3d in Aufbau but sits to the RIGHT of 3d
-    // in Slater's order, so 4s does NOT shield 3d electrons.
     const same=tgt.c-1;
-    if(same>0){
-      const v=same*0.35;
-      S+=v;
-      steps.push({label:`Same ${lc.toUpperCase()}-Group (${n}${lc})`,detail:`${same} electron${same>1?'s':''} × 0.35`,val:v,col:'cyan'});
-    }
+    const v_same=parseFloat((same*0.35).toFixed(2));
+    S+=v_same;
+    steps.push({
+      label:`Same [${n}${lc}] Group`,
+      detail: same>0
+        ? `${same} other electron${same>1?'s':''} × 0.35`
+        : `0 other electrons × 0.35 (only electron in this orbital)`,
+      val:v_same,
+      col:'cyan'
+    });
 
     // Find this orbital's position in Slater's canonical order
     const myIdx=SLATER_DF.findIndex(([an,al])=>an===n && al===l);
@@ -436,14 +446,36 @@ function slater(cfg, orbital){
       const f=cfg.find(c=>c.n===an && c.l===al);
       if(f) left+=f.c;
     }
-    if(left>0){
-      const v=left*1.00;
-      S+=v;
-      steps.push({label:`All Inner Electrons`,detail:`${left} electron${left>1?'s':''} × 1.00`,val:v,col:'purple'});
+    const v_left=parseFloat((left*1.00).toFixed(2));
+    S+=v_left;
+    steps.push({
+      label:`Inner Groups (to the left in Slater order)`,
+      detail: left>0
+        ? `${left} electron${left>1?'s':''} × 1.00`
+        : `0 inner electrons × 1.00`,
+      val:v_left,
+      col:'purple'
+    });
+
+    // Groups to the right in Slater's canonical order → contribute 0.00
+    let right=0;
+    for(let i=myIdx+1;i<SLATER_DF.length;i++){
+      const [an,al]=SLATER_DF[i];
+      const f=cfg.find(c=>c.n===an && c.l===al);
+      if(f) right+=f.c;
+    }
+    if(right>0){
+      steps.push({
+        label:`Outer Groups (to the right in Slater order)`,
+        detail:`${right} electron${right>1?'s':''} × 0.00 (outside Slater group, no shielding)`,
+        val:0.00,
+        col:'slate'
+      });
     }
   }
 
-  return {S:parseFloat(S.toFixed(4)),steps};
+  S=parseFloat(S.toFixed(2));
+  return {S, steps};
 }
 
 // ─── CUSTOM ORBITAL DROPDOWN ────────────────────────────
@@ -594,8 +626,8 @@ function buildTxt(el,orb,Z,S,Zeff,steps){
   t+=`Element : ${el.name} (${el.sym})\n`;
   t+=`Atomic Z : ${Z}\nOrbital  : ${orb}\n\n`;
   t+=`Slater's Rules Breakdown:\n`;
-  steps.forEach(s=>{ t+=`  ${s.label}: ${s.detail} = ${s.val.toFixed(4)}\n`; });
-  t+=`\nShielding Constant  S    = ${S.toFixed(4)}\n`;
+  steps.forEach(s=>{ t+=`  ${s.label}: ${s.detail} = +${s.val.toFixed(2)}\n`; });
+  t+=`\nShielding Constant  S    = ${S.toFixed(2)}\n`;
   t+=`Effective Nuc. Charge Zeff = ${Z} − ${S.toFixed(2)} = ${Zeff.toFixed(2)}\n`;
   return t;
 }
@@ -616,7 +648,6 @@ function App(){
     try{ return JSON.parse(localStorage.getItem('ae-favs')||'[]'); }catch{ return []; }
   });
   const [tab,setTab]=useState('table');
-  const [orbDdOpen,setOrbDdOpen]=useState(false);
   const [copied,setCopied]=useState('');
   const resRef=useRef(null);
 
@@ -634,18 +665,31 @@ function App(){
   const orbs=useMemo(()=>getOrbitals(cfg),[cfg]);
   const cfgStr=useMemo(()=>fmtConfig(cfg),[cfg]);
 
+  // When an element is selected, default to the outermost (valence) orbital and auto-calculate
   useEffect(()=>{
-    if(orbs.length){ setOrb(orbs[0]); } else { setOrb(''); }
-    setResult(null);
+    if(sel && orbs.length){
+      const valenceOrb = orbs[orbs.length - 1];
+      setOrb(valenceOrb);
+      const r = slater(cfg, valenceOrb);
+      if(r){
+        const Z=sel.Z, S=r.S, Zeff=parseFloat((Z-S).toFixed(2));
+        setResult({Z,S,Zeff,steps:r.steps,orb:valenceOrb,el:sel});
+      }
+    } else {
+      setOrb('');
+      setResult(null);
+    }
   },[sel]);
 
-  function calc(){
-    if(!sel||!orb) return;
-    const r=slater(cfg,orb);
+  function executeCalc(targetOrb){
+    const useOrb = targetOrb || orb;
+    if(!sel || !useOrb) return;
+    const r=slater(cfg, useOrb);
     if(!r) return;
-    const Z=sel.Z, S=r.S, Zeff=parseFloat((Z-S).toFixed(4));
-    setResult({Z,S,Zeff,steps:r.steps,orb,el:sel});
-    setHistory(p=>[...p.slice(-49),{Z,S,Zeff,orb,sym:sel.sym,name:sel.name,steps:r.steps,el:sel,ts:new Date().toLocaleString()}]);
+    const Z=sel.Z, S=r.S, Zeff=parseFloat((Z-S).toFixed(2));
+    setOrb(useOrb);
+    setResult({Z,S,Zeff,steps:r.steps,orb:useOrb,el:sel});
+    setHistory(p=>[...p.slice(-49),{Z,S,Zeff,orb:useOrb,sym:sel.sym,name:sel.name,steps:r.steps,el:sel,ts:new Date().toLocaleString()}]);
   }
 
   const isFav=sel?favs.some(f=>f.Z===sel.Z):false;
@@ -706,7 +750,25 @@ function App(){
       <div key={r} className="flex gap-0.5">
         {Array.from({length:18},(_,i)=>i+1).map(col=>{
           const e=PT_GRID[r]?.[col];
-          if(!e) return <div key={col} style={{width:52,height:52,flexShrink:0}} className="hidden sm:block"/>;
+          if(!e) {
+            if(r===6 && col===3) {
+              return (
+                <div key={col} className="el c-lanthanide pointer-events-none opacity-80 flex flex-col items-center justify-center text-center" style={{borderStyle:'dashed'}}>
+                  <span className="z">57–71</span>
+                  <span className="s" style={{fontSize:9}}>La–Lu</span>
+                </div>
+              );
+            }
+            if(r===7 && col===3) {
+              return (
+                <div key={col} className="el c-actinide pointer-events-none opacity-80 flex flex-col items-center justify-center text-center" style={{borderStyle:'dashed'}}>
+                  <span className="z">89–103</span>
+                  <span className="s" style={{fontSize:9}}>Ac–Lr</span>
+                </div>
+              );
+            }
+            return <div key={col} style={{width:52,height:52,flexShrink:0}} className="hidden sm:block"/>;
+          }
           const cls=[
             'el',`c-${e.cat}`,
             sel?.Z===e.Z?'sel':'',
@@ -714,7 +776,7 @@ function App(){
           ].filter(Boolean).join(' ');
           return(
             <div key={e.Z} className={cls} title={e.name}
-              onClick={()=>{ setSel(e); setResult(null); setTab('table'); }}>
+              onClick={()=>{ setSel(e); setTab('table'); }}>
               <span className="z">{e.Z}</span>
               <span className="s">{e.sym}</span>
               <span className="n">{e.name}</span>
@@ -861,16 +923,21 @@ function App(){
 
                     {/* Orbital quick-pick pills */}
                     <div className="flex flex-wrap gap-2 mb-3">
-                      {orbs.map(o=>(
-                        <button key={o} onClick={()=>{ setOrb(o); setResult(null); }}
-                          className={`px-3 py-1.5 rounded-lg font-mono text-sm font-semibold transition-all ${
-                            orb===o
-                              ?'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/30'
-                              :dark?'bg-white/10 hover:bg-white/20 text-white/70':'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                          }`}>
-                          {o}
-                        </button>
-                      ))}
+                      {orbs.map((o, idx)=>{
+                        const isValence = idx === orbs.length - 1;
+                        return (
+                          <button key={o} onClick={()=>executeCalc(o)}
+                            className={`px-3 py-1.5 rounded-lg font-mono text-sm font-semibold transition-all ${
+                              orb===o
+                                ?'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/30 ring-1 ring-cyan-300/50'
+                                :dark?'bg-white/10 hover:bg-white/20 text-white/70':'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                            }`}
+                            title={isValence ? `${o} (Valence Orbital)` : o}>
+                            {o}
+                            {isValence && <span className="ml-1 text-[9px] opacity-75 font-sans font-normal uppercase">val</span>}
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {/* Custom styled dropdown – no native select glitch */}
@@ -878,10 +945,10 @@ function App(){
                       orbs={orbs}
                       orb={orb}
                       dark={dark}
-                      onSelect={o=>{ setOrb(o); setResult(null); }}
+                      onSelect={o=>executeCalc(o)}
                     />
 
-                    <button onClick={calc}
+                    <button onClick={()=>executeCalc(orb)}
                       className="w-full py-3 rounded-xl font-bold text-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-400 hover:to-blue-500 transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:-translate-y-0.5 active:translate-y-0">
                       ⚡ Calculate Z<sub>eff</sub>
                     </button>
@@ -940,6 +1007,7 @@ function App(){
                               cyan:{bg:dark?'rgba(6,182,212,0.1)':'rgba(6,182,212,0.08)',brd:'rgba(6,182,212,0.3)',tx:'#06b6d4'},
                               blue:{bg:dark?'rgba(59,130,246,0.1)':'rgba(59,130,246,0.08)',brd:'rgba(59,130,246,0.3)',tx:'#3b82f6'},
                               purple:{bg:dark?'rgba(139,92,246,0.1)':'rgba(139,92,246,0.08)',brd:'rgba(139,92,246,0.3)',tx:'#8b5cf6'},
+                              slate:{bg:dark?'rgba(148,163,184,0.08)':'rgba(100,116,139,0.08)',brd:'rgba(148,163,184,0.25)',tx:dark?'#94a3b8':'#64748b'},
                             };
                             const c=cm[st.col]||cm.cyan;
                             return(
@@ -949,7 +1017,7 @@ function App(){
                                   <div className="font-semibold text-sm" style={{color:c.tx}}>{st.label}</div>
                                   <div className="text-xs opacity-65 font-mono mt-0.5">{st.detail}</div>
                                 </div>
-                                <div className="font-mono font-bold text-sm flex-shrink-0" style={{color:c.tx}}>+{st.val.toFixed(4)}</div>
+                                <div className="font-mono font-bold text-sm flex-shrink-0" style={{color:c.tx}}>+{st.val.toFixed(2)}</div>
                               </div>
                             );
                           })}
@@ -959,7 +1027,7 @@ function App(){
                         <div className={`mt-3 rounded-xl p-3 ${dark?'bg-white/5':'bg-slate-50'}`}>
                           <div className={`text-xs font-semibold mb-1 ${dark?'text-white/45':'text-slate-500'}`}>Total Shielding Constant</div>
                           <div className="font-mono font-black text-base">
-                            S = {result.steps.map(s=>s.val.toFixed(4)).join(' + ')} = <span className="text-purple-400">{result.S.toFixed(4)}</span>
+                            S = {result.steps.filter(s=>s.val>0||result.steps.length===1).map(s=>s.val.toFixed(2)).join(' + ')} = <span className="text-purple-400">{result.S.toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
