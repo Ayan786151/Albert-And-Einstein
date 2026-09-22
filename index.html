@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Albert & Einstein – Zeff Calculator</title>
+  <meta name="description" content="Interactive Effective Nuclear Charge (Zeff) calculator using Slater's Rules for chemistry students. Explore all 118 elements with step-by-step explanations." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- React 18 CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+  <!-- Babel (JSX in browser) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- html2canvas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter','sans-serif'],
+            mono: ['JetBrains Mono','monospace'],
+          },
+        }
+      }
+    };
+  </script>
+
+  <style>
+    *{box-sizing:border-box;}
+    body{font-family:'Inter',sans-serif;margin:0;padding:0;}
+
+    /* ── Periodic table ── */
+    .pt-scroll{overflow-x:auto;padding-bottom:8px;}
+    .pt-scroll::-webkit-scrollbar{height:6px;}
+    .pt-scroll::-webkit-scrollbar-thumb{background:rgba(6,182,212,0.35);border-radius:3px;}
+
+    .el{
+      width:52px;height:52px;border-radius:8px;cursor:pointer;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      transition:transform .15s,box-shadow .15s,border-color .15s;
+      border:1.5px solid transparent;flex-shrink:0;user-select:none;position:relative;z-index:1;
+    }
+    .el:hover{transform:scale(1.14);z-index:10;box-shadow:0 0 18px rgba(6,182,212,.65);border-color:rgba(6,182,212,.8);}
+    .el.sel{transform:scale(1.18);z-index:11;border-color:#22d3ee;box-shadow:0 0 28px rgba(6,182,212,.95);}
+    .el.smatch{outline:2px solid #fbbf24;outline-offset:1px;}
+    .el .z{font-size:9px;font-weight:500;opacity:.85;}
+    .el .s{font-size:14px;font-weight:800;line-height:1;}
+    .el .n{font-size:8px;opacity:.7;max-width:50px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+    /* Category colours – dark */
+    .c-nonmetal {background:rgba(16,185,129,.22);color:#6ee7b7;}
+    .c-noble-gas{background:rgba(139,92,246,.22);color:#c4b5fd;}
+    .c-alkali    {background:rgba(239,68,68,.22); color:#fca5a5;}
+    .c-alkaline  {background:rgba(234,179,8,.22); color:#fde68a;}
+    .c-metalloid {background:rgba(20,184,166,.22);color:#99f6e4;}
+    .c-post-metal{background:rgba(34,211,238,.22);color:#a5f3fc;}
+    .c-transition{background:rgba(37,99,235,.22); color:#93c5fd;}
+    .c-lanthanide{background:rgba(236,72,153,.22);color:#f9a8d4;}
+    .c-actinide  {background:rgba(249,115,22,.22);color:#fdba74;}
+    .c-unknown   {background:rgba(100,116,139,.22);color:#cbd5e1;}
+
+    /* Light overrides */
+    .light .c-nonmetal {background:rgba(16,185,129,.15);color:#065f46;}
+    .light .c-noble-gas{background:rgba(139,92,246,.15);color:#4c1d95;}
+    .light .c-alkali    {background:rgba(239,68,68,.15); color:#7f1d1d;}
+    .light .c-alkaline  {background:rgba(234,179,8,.15); color:#713f12;}
+    .light .c-metalloid {background:rgba(20,184,166,.15);color:#134e4a;}
+    .light .c-post-metal{background:rgba(34,211,238,.15);color:#0e7490;}
+    .light .c-transition{background:rgba(37,99,235,.15); color:#1e3a8a;}
+    .light .c-lanthanide{background:rgba(236,72,153,.15);color:#831843;}
+    .light .c-actinide  {background:rgba(249,115,22,.15);color:#7c2d12;}
+    .light .c-unknown   {background:rgba(100,116,139,.15);color:#1e293b;}
+
+    @keyframes fadeIn  {from{opacity:0}to{opacity:1}}
+    @keyframes slideUp {from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes glow    {0%,100%{box-shadow:0 0 10px rgba(6,182,212,.3)}50%{box-shadow:0 0 30px rgba(6,182,212,.7)}}
+
+    .anim-fade {animation:fadeIn .35s ease-out;}
+    .anim-up   {animation:slideUp .4s ease-out;}
+    .anim-glow {animation:glow 2.5s ease-in-out infinite;}
+
+    .glass{
+      background:rgba(255,255,255,.06);
+      backdrop-filter:blur(14px);
+      -webkit-backdrop-filter:blur(14px);
+      border:1px solid rgba(255,255,255,.1);
+    }
+    .light .glass{background:rgba(255,255,255,.75);border:1px solid rgba(0,0,0,.09);}
+
+    .hist::-webkit-scrollbar{width:4px;}
+    .hist::-webkit-scrollbar-thumb{background:rgba(6,182,212,.25);border-radius:2px;}
+
+    @media(max-width:768px){
+      .el{width:36px;height:36px;border-radius:5px;}
+      .el .s{font-size:10px;}
+      .el .z{font-size:7px;}
+      .el .n{display:none;}
+    }
+    @media(max-width:480px){
+      .el{width:28px;height:28px;border-radius:4px;}
+      .el .s{font-size:8px;}
+      .el .z{font-size:6px;}
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+/* =========================================================
+   Albert & Einstein – Zeff Calculator
+   Full Slater's Rules engine · All 118 elements · Dark/Light
+   ========================================================= */
+
+const { useState, useEffect, useMemo, useRef } = React;
+
+// ─── ELEMENT DATA ────────────────────────────────────────
+const ELEMENTS=[
+  {Z:1,  sym:"H",  name:"Hydrogen",      cat:"nonmetal",   p:1,g:1},
+  {Z:2,  sym:"He", name:"Helium",        cat:"noble-gas",  p:1,g:18},
+  {Z:3,  sym:"Li", name:"Lithium",       cat:"alkali",     p:2,g:1},
+  {Z:4,  sym:"Be", name:"Beryllium",     cat:"alkaline",   p:2,g:2},
+  {Z:5,  sym:"B",  name:"Boron",         cat:"metalloid",  p:2,g:13},
+  {Z:6,  sym:"C",  name:"Carbon",        cat:"nonmetal",   p:2,g:14},
+  {Z:7,  sym:"N",  name:"Nitrogen",      cat:"nonmetal",   p:2,g:15},
+  {Z:8,  sym:"O",  name:"Oxygen",        cat:"nonmetal",   p:2,g:16},
+  {Z:9,  sym:"F",  name:"Fluorine",      cat:"nonmetal",   p:2,g:17},
+  {Z:10, sym:"Ne", name:"Neon",          cat:"noble-gas",  p:2,g:18},
+  {Z:11, sym:"Na", name:"Sodium",        cat:"alkali",     p:3,g:1},
+  {Z:12, sym:"Mg", name:"Magnesium",     cat:"alkaline",   p:3,g:2},
+  {Z:13, sym:"Al", name:"Aluminium",     cat:"post-metal", p:3,g:13},
+  {Z:14, sym:"Si", name:"Silicon",       cat:"metalloid",  p:3,g:14},
+  {Z:15, sym:"P",  name:"Phosphorus",    cat:"nonmetal",   p:3,g:15},
+  {Z:16, sym:"S",  name:"Sulfur",        cat:"nonmetal",   p:3,g:16},
+  {Z:17, sym:"Cl", name:"Chlorine",      cat:"nonmetal",   p:3,g:17},
+  {Z:18, sym:"Ar", name:"Argon",         cat:"noble-gas",  p:3,g:18},
+  {Z:19, sym:"K",  name:"Potassium",     cat:"alkali",     p:4,g:1},
+  {Z:20, sym:"Ca", name:"Calcium",       cat:"alkaline",   p:4,g:2},
+  {Z:21, sym:"Sc", name:"Scandium",      cat:"transition", p:4,g:3},
+  {Z:22, sym:"Ti", name:"Titanium",      cat:"transition", p:4,g:4},
+  {Z:23, sym:"V",  name:"Vanadium",      cat:"transition", p:4,g:5},
+  {Z:24, sym:"Cr", name:"Chromium",      cat:"transition", p:4,g:6},
+  {Z:25, sym:"Mn", name:"Manganese",     cat:"transition", p:4,g:7},
+  {Z:26, sym:"Fe", name:"Iron",          cat:"transition", p:4,g:8},
+  {Z:27, sym:"Co", name:"Cobalt",        cat:"transition", p:4,g:9},
+  {Z:28, sym:"Ni", name:"Nickel",        cat:"transition", p:4,g:10},
+  {Z:29, sym:"Cu", name:"Copper",        cat:"transition", p:4,g:11},
+  {Z:30, sym:"Zn", name:"Zinc",          cat:"transition", p:4,g:12},
+  {Z:31, sym:"Ga", name:"Gallium",       cat:"post-metal", p:4,g:13},
+  {Z:32, sym:"Ge", name:"Germanium",     cat:"metalloid",  p:4,g:14},
+  {Z:33, sym:"As", name:"Arsenic",       cat:"metalloid",  p:4,g:15},
+  {Z:34, sym:"Se", name:"Selenium",      cat:"nonmetal",   p:4,g:16},
+  {Z:35, sym:"Br", name:"Bromine",       cat:"nonmetal",   p:4,g:17},
+  {Z:36, sym:"Kr", name:"Krypton",       cat:"noble-gas",  p:4,g:18},
+  {Z:37, sym:"Rb", name:"Rubidium",      cat:"alkali",     p:5,g:1},
+  {Z:38, sym:"Sr", name:"Strontium",     cat:"alkaline",   p:5,g:2},
+  {Z:39, sym:"Y",  name:"Yttrium",       cat:"transition", p:5,g:3},
+  {Z:40, sym:"Zr", name:"Zirconium",     cat:"transition", p:5,g:4},
+  {Z:41, sym:"Nb", name:"Niobium",       cat:"transition", p:5,g:5},
+  {Z:42, sym:"Mo", name:"Molybdenum",    cat:"transition", p:5,g:6},
+  {Z:43, sym:"Tc", name:"Technetium",    cat:"transition", p:5,g:7},
+  {Z:44, sym:"Ru", name:"Ruthenium",     cat:"transition", p:5,g:8},
+  {Z:45, sym:"Rh", name:"Rhodium",       cat:"transition", p:5,g:9},
+  {Z:46, sym:"Pd", name:"Palladium",     cat:"transition", p:5,g:10},
+  {Z:47, sym:"Ag", name:"Silver",        cat:"transition", p:5,g:11},
+  {Z:48, sym:"Cd", name:"Cadmium",       cat:"transition", p:5,g:12},
+  {Z:49, sym:"In", name:"Indium",        cat:"post-metal", p:5,g:13},
+  {Z:50, sym:"Sn", name:"Tin",           cat:"post-metal", p:5,g:14},
+  {Z:51, sym:"Sb", name:"Antimony",      cat:"metalloid",  p:5,g:15},
+  {Z:52, sym:"Te", name:"Tellurium",     cat:"metalloid",  p:5,g:16},
+  {Z:53, sym:"I",  name:"Iodine",        cat:"nonmetal",   p:5,g:17},
+  {Z:54, sym:"Xe", name:"Xenon",         cat:"noble-gas",  p:5,g:18},
+  {Z:55, sym:"Cs", name:"Caesium",       cat:"alkali",     p:6,g:1},
+  {Z:56, sym:"Ba", name:"Barium",        cat:"alkaline",   p:6,g:2},
+  {Z:57, sym:"La", name:"Lanthanum",     cat:"lanthanide", p:6,g:3,  lrow:1},
+  {Z:58, sym:"Ce", name:"Cerium",        cat:"lanthanide", p:6,g:4,  lrow:1},
+  {Z:59, sym:"Pr", name:"Praseodymium",  cat:"lanthanide", p:6,g:5,  lrow:1},
+  {Z:60, sym:"Nd", name:"Neodymium",     cat:"lanthanide", p:6,g:6,  lrow:1},
+  {Z:61, sym:"Pm", name:"Promethium",    cat:"lanthanide", p:6,g:7,  lrow:1},
+  {Z:62, sym:"Sm", name:"Samarium",      cat:"lanthanide", p:6,g:8,  lrow:1},
+  {Z:63, sym:"Eu", name:"Europium",      cat:"lanthanide", p:6,g:9,  lrow:1},
+  {Z:64, sym:"Gd", name:"Gadolinium",    cat:"lanthanide", p:6,g:10, lrow:1},
+  {Z:65, sym:"Tb", name:"Terbium",       cat:"lanthanide", p:6,g:11, lrow:1},
+  {Z:66, sym:"Dy", name:"Dysprosium",    cat:"lanthanide", p:6,g:12, lrow:1},
+  {Z:67, sym:"Ho", name:"Holmium",       cat:"lanthanide", p:6,g:13, lrow:1},
+  {Z:68, sym:"Er", name:"Erbium",        cat:"lanthanide", p:6,g:14, lrow:1},
+  {Z:69, sym:"Tm", name:"Thulium",       cat:"lanthanide", p:6,g:15, lrow:1},
+  {Z:70, sym:"Yb", name:"Ytterbium",     cat:"lanthanide", p:6,g:16, lrow:1},
+  {Z:71, sym:"Lu", name:"Lutetium",      cat:"lanthanide", p:6,g:17, lrow:1},
+  {Z:72, sym:"Hf", name:"Hafnium",       cat:"transition", p:6,g:4},
+  {Z:73, sym:"Ta", name:"Tantalum",      cat:"transition", p:6,g:5},
+  {Z:74, sym:"W",  name:"Tungsten",      cat:"transition", p:6,g:6},
+  {Z:75, sym:"Re", name:"Rhenium",       cat:"transition", p:6,g:7},
+  {Z:76, sym:"Os", name:"Osmium",        cat:"transition", p:6,g:8},
+  {Z:77, sym:"Ir", name:"Iridium",       cat:"transition", p:6,g:9},
+  {Z:78, sym:"Pt", name:"Platinum",      cat:"transition", p:6,g:10},
+  {Z:79, sym:"Au", name:"Gold",          cat:"transition", p:6,g:11},
+  {Z:80, sym:"Hg", name:"Mercury",       cat:"transition", p:6,g:12},
+  {Z:81, sym:"Tl", name:"Thallium",      cat:"post-metal", p:6,g:13},
+  {Z:82, sym:"Pb", name:"Lead",          cat:"post-metal", p:6,g:14},
+  {Z:83, sym:"Bi", name:"Bismuth",       cat:"post-metal", p:6,g:15},
+  {Z:84, sym:"Po", name:"Polonium",      cat:"metalloid",  p:6,g:16},
+  {Z:85, sym:"At", name:"Astatine",      cat:"metalloid",  p:6,g:17},
+  {Z:86, sym:"Rn", name:"Radon",         cat:"noble-gas",  p:6,g:18},
+  {Z:87, sym:"Fr", name:"Francium",      cat:"alkali",     p:7,g:1},
+  {Z:88, sym:"Ra", name:"Radium",        cat:"alkaline",   p:7,g:2},
+  {Z:89, sym:"Ac", name:"Actinium",      cat:"actinide",   p:7,g:3,  lrow:2},
+  {Z:90, sym:"Th", name:"Thorium",       cat:"actinide",   p:7,g:4,  lrow:2},
+  {Z:91, sym:"Pa", name:"Protactinium",  cat:"actinide",   p:7,g:5,  lrow:2},
+  {Z:92, sym:"U",  name:"Uranium",       cat:"actinide",   p:7,g:6,  lrow:2},
+  {Z:93, sym:"Np", name:"Neptunium",     cat:"actinide",   p:7,g:7,  lrow:2},
+  {Z:94, sym:"Pu", name:"Plutonium",     cat:"actinide",   p:7,g:8,  lrow:2},
+  {Z:95, sym:"Am", name:"Americium",     cat:"actinide",   p:7,g:9,  lrow:2},
+  {Z:96, sym:"Cm", name:"Curium",        cat:"actinide",   p:7,g:10, lrow:2},
+  {Z:97, sym:"Bk", name:"Berkelium",     cat:"actinide",   p:7,g:11, lrow:2},
+  {Z:98, sym:"Cf", name:"Californium",   cat:"actinide",   p:7,g:12, lrow:2},
+  {Z:99, sym:"Es", name:"Einsteinium",   cat:"actinide",   p:7,g:13, lrow:2},
+  {Z:100,sym:"Fm", name:"Fermium",       cat:"actinide",   p:7,g:14, lrow:2},
+  {Z:101,sym:"Md", name:"Mendelevium",   cat:"actinide",   p:7,g:15, lrow:2},
+  {Z:102,sym:"No", name:"Nobelium",      cat:"actinide",   p:7,g:16, lrow:2},
+  {Z:103,sym:"Lr", name:"Lawrencium",    cat:"actinide",   p:7,g:17, lrow:2},
+  {Z:104,sym:"Rf", name:"Rutherfordium", cat:"transition", p:7,g:4},
+  {Z:105,sym:"Db", name:"Dubnium",       cat:"transition", p:7,g:5},
+  {Z:106,sym:"Sg", name:"Seaborgium",    cat:"transition", p:7,g:6},
+  {Z:107,sym:"Bh", name:"Bohrium",       cat:"transition", p:7,g:7},
+  {Z:108,sym:"Hs", name:"Hassium",       cat:"transition", p:7,g:8},
+  {Z:109,sym:"Mt", name:"Meitnerium",    cat:"unknown",    p:7,g:9},
+  {Z:110,sym:"Ds", name:"Darmstadtium",  cat:"unknown",    p:7,g:10},
+  {Z:111,sym:"Rg", name:"Roentgenium",   cat:"unknown",    p:7,g:11},
+  {Z:112,sym:"Cn", name:"Copernicium",   cat:"transition", p:7,g:12},
+  {Z:113,sym:"Nh", name:"Nihonium",      cat:"unknown",    p:7,g:13},
+  {Z:114,sym:"Fl", name:"Flerovium",     cat:"unknown",    p:7,g:14},
+  {Z:115,sym:"Mc", name:"Moscovium",     cat:"unknown",    p:7,g:15},
+  {Z:116,sym:"Lv", name:"Livermorium",   cat:"unknown",    p:7,g:16},
+  {Z:117,sym:"Ts", name:"Tennessine",    cat:"unknown",    p:7,g:17},
+  {Z:118,sym:"Og", name:"Oganesson",     cat:"noble-gas",  p:7,g:18},
+];
+
+// ─── ELECTRON CONFIGURATION ENGINE ──────────────────────
+// Aufbau order: [n, l, max] where l: 0=s,1=p,2=d,3=f
+const AUFBAU=[
+  [1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[4,0,2],[3,2,10],[4,1,6],
+  [5,0,2],[4,2,10],[5,1,6],[6,0,2],[4,3,14],[5,2,10],[6,1,6],
+  [7,0,2],[5,3,14],[6,2,10],[7,1,6],[8,0,2],[6,3,14],[7,2,10],
+];
+
+// Slater's CANONICAL grouping order (different from Aufbau fill order!)
+// For d/f electrons: electrons in groups to the LEFT of target shield with 1.00
+// Order: [1s][2sp][3sp][3d][4sp][4d][4f][5sp][5d][5f][6sp][6d][7sp][7d]
+const SLATER_DF=[
+  [1,0],
+  [2,0],[2,1],
+  [3,0],[3,1],[3,2],
+  [4,0],[4,1],[4,2],[4,3],
+  [5,0],[5,1],[5,2],[5,3],
+  [6,0],[6,1],[6,2],[6,3],
+  [7,0],[7,1],[7,2],[7,3],
+];
+const LS=['s','p','d','f'];
+const SUP=['⁰','¹','²','³','⁴','⁵','⁶','⁷','⁸','⁹','¹⁰','¹¹','¹²','¹³','¹⁴'];
+
+// Known experimental exceptions to Aufbau principle
+// All electron counts verified (sum must equal Z)
+const EXCEPT={
+  // ── Period 4 ──
+  // Cr (24): [Ar] 3d⁵ 4s¹  (half-filled d stability)
+  24:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,5],[4,0,1]],          // sum=24
+  // Cu (29): [Ar] 3d¹⁰ 4s¹  (fully-filled d stability)
+  29:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,1]],         // sum=29
+
+  // ── Period 5 ──
+  // Nb (41): [Kr] 4d⁴ 5s¹
+  41:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,4],[5,0,1]],   // sum=41
+  // Mo (42): [Kr] 4d⁵ 5s¹
+  42:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,5],[5,0,1]],   // sum=42
+  // Ru (44): [Kr] 4d⁷ 5s¹
+  44:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,7],[5,0,1]],   // sum=44
+  // Rh (45): [Kr] 4d⁸ 5s¹
+  45:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,8],[5,0,1]],   // sum=45
+  // Pd (46): [Kr] 4d¹⁰  (no 5s at all!)
+  46:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,10]],          // sum=46
+  // Ag (47): [Kr] 4d¹⁰ 5s¹
+  47:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,10],[5,0,1]],  // sum=47
+
+  // ── Period 6 Lanthanides ──
+  // La (57): [Xe] 5d¹ 6s²  (5d before 4f)
+  57:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,10],[5,0,2],[5,1,6],[5,2,1],[6,0,2]],           // sum=57
+  // Ce (58): [Xe] 4f¹ 5d¹ 6s²
+  58:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,10],[5,0,2],[5,1,6],[4,3,1],[5,2,1],[6,0,2]],   // sum=58
+  // Gd (64): [Xe] 4f⁷ 5d¹ 6s²  (half-filled f + 5d)
+  64:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,10],[5,0,2],[5,1,6],[4,3,7],[5,2,1],[6,0,2]],   // sum=64
+
+  // ── Period 6 Transition Metals ──
+  // Pt (78): [Xe] 4f¹⁴ 5d⁹ 6s¹
+  78:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,10],[5,0,2],[5,1,6],[4,3,14],[5,2,9],[6,0,1]],  // sum=78
+  // Au (79): [Xe] 4f¹⁴ 5d¹⁰ 6s¹
+  79:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,10],[5,0,2],[5,1,6],[4,3,14],[5,2,10],[6,0,1]], // sum=79
+
+  // ── Period 7 Actinides ──
+  // Rn core used below = Z=86 electrons
+  // [1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,10],[5,0,2],[5,1,6],[4,3,14],[5,2,10],[6,0,2],[6,1,6]
+  // Ac (89): [Rn] 6d¹ 7s²
+  89:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,10],[5,0,2],[5,1,6],[4,3,14],[5,2,10],[6,0,2],[6,1,6],[7,0,2],[6,2,1]],              // sum=89
+  // Th (90): [Rn] 6d² 7s²
+  90:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,10],[5,0,2],[5,1,6],[4,3,14],[5,2,10],[6,0,2],[6,1,6],[7,0,2],[6,2,2]],              // sum=90
+  // Pa (91): [Rn] 5f² 6d¹ 7s²
+  91:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,10],[5,0,2],[5,1,6],[4,3,14],[5,2,10],[6,0,2],[6,1,6],[7,0,2],[5,3,2],[6,2,1]],     // sum=91
+  // U  (92): [Rn] 5f³ 6d¹ 7s²
+  92:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,10],[5,0,2],[5,1,6],[4,3,14],[5,2,10],[6,0,2],[6,1,6],[7,0,2],[5,3,3],[6,2,1]],     // sum=92
+  // Np (93): [Rn] 5f⁴ 6d¹ 7s²
+  93:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,10],[5,0,2],[5,1,6],[4,3,14],[5,2,10],[6,0,2],[6,1,6],[7,0,2],[5,3,4],[6,2,1]],     // sum=93
+  // Cm (96): [Rn] 5f⁷ 6d¹ 7s²
+  96:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,10],[5,0,2],[5,1,6],[4,3,14],[5,2,10],[6,0,2],[6,1,6],[7,0,2],[5,3,7],[6,2,1]],     // sum=96
+  // Lr (103): [Rn] 5f¹⁴ 7s² 7p¹
+  103:[[1,0,2],[2,0,2],[2,1,6],[3,0,2],[3,1,6],[3,2,10],[4,0,2],[4,1,6],[4,2,10],[5,0,2],[5,1,6],[4,3,14],[5,2,10],[6,0,2],[6,1,6],[7,0,2],[5,3,14],[7,1,1]],   // sum=103
+};
+
+function getConfig(Z){
+  if(EXCEPT[Z]) return EXCEPT[Z].map(([n,l,c])=>({n,l,c}));
+  let rem=Z; const cfg=[];
+  for(const [n,l,max] of AUFBAU){
+    if(rem<=0) break;
+    const c=Math.min(rem,max); cfg.push({n,l,c}); rem-=c;
+  }
+  return cfg;
+}
+
+function fmtConfig(cfg){
+  return [...cfg].sort((a,b)=>a.n-b.n||a.l-b.l)
+    .map(({n,l,c})=>`${n}${LS[l]}${SUP[c]||c}`).join(' ');
+}
+
+// Return orbitals sorted by n then l (natural chemistry order)
+function getOrbitals(cfg){
+  return [...cfg].sort((a,b)=>a.n-b.n||a.l-b.l).map(({n,l})=>`${n}${LS[l]}`);
+}
+
+// ─── SLATER'S RULES ENGINE ───────────────────────────────
+function slater(cfg, orbital){
+  const n=parseInt(orbital[0]);
+  const lc=orbital[1];
+  const l=LS.indexOf(lc);
+  const tgt=cfg.find(c=>c.n===n && c.l===l);
+  if(!tgt) return null;
+
+  const steps=[];
+  let S=0;
+
+  if(lc==='s'||lc==='p'){
+    // Slater's [ns,np] group: only s and p of SAME n count (not nd or nf)
+    // Exclude the electron itself
+    const sameShell=cfg.filter(c=>c.n===n && (c.l===0||c.l===1)).reduce((acc,c)=>{
+      if(c.l===l) return acc+c.c-1; // same orbital subtype: exclude self
+      return acc+c.c;              // other sp of same n (e.g. 2p for a 2s electron)
+    },0);
+    const sigma=(n===1)?0.30:0.35;
+    // Always show this step so students see every rule (even when contribution = 0)
+    {
+      const v=sameShell*sigma;
+      S+=v;
+      steps.push({
+        label:`Same [${n}s,${n>1?n+'p':'1s'}] Group`,
+        detail: sameShell>0
+          ? `${sameShell} electron${sameShell>1?'s':''} × ${sigma}`
+          : `0 electrons × ${sigma} (only electron in this group)`,
+        val:v,
+        col:'cyan'
+      });
+    }
+
+    // (n-1) shell → 0.85  (includes ns, np, nd, nf of shell n-1)
+    const nm1=cfg.filter(c=>c.n===n-1).reduce((a,c)=>a+c.c,0);
+    if(n>1){
+      const v=nm1*0.85;
+      S+=v;
+      steps.push({
+        label:`Shell n\u22121 (n = ${n-1})`,
+        detail: nm1>0
+          ? `${nm1} electron${nm1>1?'s':''} × 0.85`
+          : `0 electrons in shell ${n-1}`,
+        val:v,
+        col:'blue'
+      });
+    }
+
+    // (n-2) and lower shells → 1.00
+    const inner=cfg.filter(c=>c.n<=n-2).reduce((a,c)=>a+c.c,0);
+    if(n>2){
+      const v=inner*1.00;
+      S+=v;
+      steps.push({
+        label:`Inner Shells (n \u2264 ${n-2})`,
+        detail: inner>0
+          ? `${inner} electron${inner>1?'s':''} × 1.00`
+          : `0 electrons in shells \u2264 ${n-2}`,
+        val:v,
+        col:'purple'
+      });
+    }
+
+  } else {
+    // ── d or f electron ──
+    // Slater's rules: same group → 0.35; all groups to the LEFT in
+    // Slater's canonical order → 1.00; groups to the right → 0.00
+    // NOTE: We use SLATER_DF order, NOT the Aufbau fill order.
+    // e.g. 4s fills before 3d in Aufbau but sits to the RIGHT of 3d
+    // in Slater's order, so 4s does NOT shield 3d electrons.
+    const same=tgt.c-1;
+    if(same>0){
+      const v=same*0.35;
+      S+=v;
+      steps.push({label:`Same ${lc.toUpperCase()}-Group (${n}${lc})`,detail:`${same} electron${same>1?'s':''} × 0.35`,val:v,col:'cyan'});
+    }
+
+    // Find this orbital's position in Slater's canonical order
+    const myIdx=SLATER_DF.findIndex(([an,al])=>an===n && al===l);
+    let left=0;
+    for(let i=0;i<myIdx;i++){
+      const [an,al]=SLATER_DF[i];
+      const f=cfg.find(c=>c.n===an && c.l===al);
+      if(f) left+=f.c;
+    }
+    if(left>0){
+      const v=left*1.00;
+      S+=v;
+      steps.push({label:`All Inner Electrons`,detail:`${left} electron${left>1?'s':''} × 1.00`,val:v,col:'purple'});
+    }
+  }
+
+  return {S:parseFloat(S.toFixed(4)),steps};
+}
+
+// ─── CUSTOM ORBITAL DROPDOWN ────────────────────────────
+function OrbitalDropdown({orbs, orb, onSelect, dark}){
+  const [open,setOpen]=useState(false);
+  const ref=useRef(null);
+
+  // Close on outside click
+  useEffect(()=>{
+    function handler(e){ if(ref.current&&!ref.current.contains(e.target)) setOpen(false); }
+    document.addEventListener('mousedown',handler);
+    return ()=>document.removeEventListener('mousedown',handler);
+  },[]);
+
+  const btn=dark
+    ?'bg-white/10 border border-white/20 text-white hover:border-cyan-400'
+    :'bg-white border border-slate-300 text-slate-800 hover:border-blue-400';
+  const panel=dark
+    ?'bg-[#0d1f3c] border border-white/15 shadow-2xl shadow-black/60'
+    :'bg-white border border-slate-200 shadow-2xl shadow-slate-300/60';
+  const optBase=dark?'hover:bg-cyan-500/20 text-white/80':'hover:bg-blue-50 text-slate-700';
+  const optSel='bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold';
+
+  return(
+    <div className="relative mb-4" ref={ref}>
+      {/* Trigger button */}
+      <button
+        type="button"
+        onClick={()=>setOpen(o=>!o)}
+        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-mono font-bold text-base outline-none transition-all cursor-pointer ${btn}`}
+      >
+        <span className="text-lg">{orb}</span>
+        <span className={`text-sm transition-transform duration-200 ${open?'rotate-180':''} ${dark?'text-white/50':'text-slate-400'}`}>▼</span>
+      </button>
+
+      {/* Dropdown panel */}
+      {open&&(
+        <div className={`absolute left-0 right-0 mt-1 rounded-xl overflow-hidden z-50 ${panel}`}
+             style={{maxHeight:'260px',overflowY:'auto'}}>
+          {orbs.map(o=>(
+            <button
+              key={o}
+              type="button"
+              onClick={()=>{ onSelect(o); setOpen(false); }}
+              className={`w-full text-left px-4 py-2.5 font-mono text-sm transition-all ${
+                o===orb ? optSel : optBase
+              }`}
+            >
+              {o}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PERIODIC TABLE GRID LAYOUT ──────────────────────────
+function buildGrid(){
+  const grid={};
+  // Main group elements
+  const main=ELEMENTS.filter(e=>!e.lrow);
+  main.forEach(e=>{
+    if(!grid[e.p]) grid[e.p]={};
+    grid[e.p][e.g]=e;
+  });
+  // Lanthanides → row 9, cols 3..17
+  const lans=ELEMENTS.filter(e=>e.lrow===1);
+  lans.forEach((e,i)=>{
+    if(!grid[9]) grid[9]={};
+    grid[9][i+3]=e;
+  });
+  // Actinides → row 10, cols 3..17
+  const acts=ELEMENTS.filter(e=>e.lrow===2);
+  acts.forEach((e,i)=>{
+    if(!grid[10]) grid[10]={};
+    grid[10][i+3]=e;
+  });
+  return grid;
+}
+const PT_GRID=buildGrid();
+
+// ─── GAUGE RING ──────────────────────────────────────────
+function Gauge({label,value,max,c1,c2,size=108}){
+  const r=(size-16)/2;
+  const circ=2*Math.PI*r;
+  const pct=Math.min(value/Math.max(max,1),1);
+  const dash=pct*circ;
+  const gid=`g${label}`;
+  return(
+    <div className="flex flex-col items-center gap-1">
+      <svg width={size} height={size}>
+        <defs>
+          <linearGradient id={gid} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={c1}/>
+            <stop offset="100%" stopColor={c2}/>
+          </linearGradient>
+        </defs>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="8"/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none"
+          stroke={`url(#${gid})`} strokeWidth="8" strokeLinecap="round"
+          strokeDasharray={`${dash} ${circ-dash}`} strokeDashoffset={circ/4}
+          style={{transition:'stroke-dasharray .8s ease'}}/>
+        <text x={size/2} y={size/2-3} textAnchor="middle"
+          fill={c1} fontSize={size*0.155} fontWeight="700" fontFamily="JetBrains Mono,monospace">
+          {typeof value==='number'&&!Number.isInteger(value)?value.toFixed(2):value}
+        </text>
+        <text x={size/2} y={size/2+13} textAnchor="middle"
+          fill="rgba(255,255,255,0.45)" fontSize={size*0.1} fontFamily="Inter,sans-serif">
+          {label}
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+// ─── CATEGORY LEGEND ─────────────────────────────────────
+const CATS=[
+  {k:'alkali',    l:'Alkali Metal'},
+  {k:'alkaline',  l:'Alkaline Earth'},
+  {k:'transition',l:'Transition Metal'},
+  {k:'post-metal',l:'Post-Transition'},
+  {k:'metalloid', l:'Metalloid'},
+  {k:'nonmetal',  l:'Nonmetal'},
+  {k:'noble-gas', l:'Noble Gas'},
+  {k:'lanthanide',l:'Lanthanide'},
+  {k:'actinide',  l:'Actinide'},
+  {k:'unknown',   l:'Unknown'},
+];
+
+function Legend(){
+  return(
+    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3">
+      {CATS.map(c=>(
+        <div key={c.k} className="flex items-center gap-1.5">
+          <div className={`el c-${c.k} pointer-events-none`}
+               style={{width:10,height:10,minWidth:10,borderRadius:3}}/>
+          <span className="text-xs opacity-55">{c.l}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── RESULT TEXT BUILDER ─────────────────────────────────
+function buildTxt(el,orb,Z,S,Zeff,steps){
+  let t=`Albert & Einstein – Zeff Calculator\n${'='.repeat(38)}\n`;
+  t+=`Element : ${el.name} (${el.sym})\n`;
+  t+=`Atomic Z : ${Z}\nOrbital  : ${orb}\n\n`;
+  t+=`Slater's Rules Breakdown:\n`;
+  steps.forEach(s=>{ t+=`  ${s.label}: ${s.detail} = ${s.val.toFixed(4)}\n`; });
+  t+=`\nShielding Constant  S    = ${S.toFixed(4)}\n`;
+  t+=`Effective Nuc. Charge Zeff = ${Z} − ${S.toFixed(2)} = ${Zeff.toFixed(2)}\n`;
+  return t;
+}
+
+// ─── MAIN APP ────────────────────────────────────────────
+function App(){
+  const [dark,setDark]=useState(()=>{
+    try{ return localStorage.getItem('ae-theme')!=='light'; }catch{ return true; }
+  });
+  const [sel,setSel]=useState(null);
+  const [orb,setOrb]=useState('');
+  const [result,setResult]=useState(null);
+  const [q,setQ]=useState('');
+  const [history,setHistory]=useState(()=>{
+    try{ return JSON.parse(localStorage.getItem('ae-hist')||'[]'); }catch{ return []; }
+  });
+  const [favs,setFavs]=useState(()=>{
+    try{ return JSON.parse(localStorage.getItem('ae-favs')||'[]'); }catch{ return []; }
+  });
+  const [tab,setTab]=useState('table');
+  const [orbDdOpen,setOrbDdOpen]=useState(false);
+  const [copied,setCopied]=useState('');
+  const resRef=useRef(null);
+
+  // Dark mode
+  useEffect(()=>{
+    if(dark){ document.documentElement.classList.add('dark'); document.body.classList.remove('light'); }
+    else{ document.documentElement.classList.remove('dark'); document.body.classList.add('light'); }
+    try{ localStorage.setItem('ae-theme',dark?'dark':'light'); }catch{}
+  },[dark]);
+
+  useEffect(()=>{ try{ localStorage.setItem('ae-hist',JSON.stringify(history)); }catch{} },[history]);
+  useEffect(()=>{ try{ localStorage.setItem('ae-favs',JSON.stringify(favs)); }catch{} },[favs]);
+
+  const cfg=useMemo(()=>sel?getConfig(sel.Z):[],[sel]);
+  const orbs=useMemo(()=>getOrbitals(cfg),[cfg]);
+  const cfgStr=useMemo(()=>fmtConfig(cfg),[cfg]);
+
+  useEffect(()=>{
+    if(orbs.length){ setOrb(orbs[0]); } else { setOrb(''); }
+    setResult(null);
+  },[sel]);
+
+  function calc(){
+    if(!sel||!orb) return;
+    const r=slater(cfg,orb);
+    if(!r) return;
+    const Z=sel.Z, S=r.S, Zeff=parseFloat((Z-S).toFixed(4));
+    setResult({Z,S,Zeff,steps:r.steps,orb,el:sel});
+    setHistory(p=>[...p.slice(-49),{Z,S,Zeff,orb,sym:sel.sym,name:sel.name,steps:r.steps,el:sel,ts:new Date().toLocaleString()}]);
+  }
+
+  const isFav=sel?favs.some(f=>f.Z===sel.Z):false;
+  function toggleFav(){
+    if(!sel) return;
+    setFavs(p=>isFav?p.filter(f=>f.Z!==sel.Z):[...p,sel]);
+  }
+
+  function doCopy(){
+    if(!result) return;
+    const t=buildTxt(result.el,result.orb,result.Z,result.S,result.Zeff,result.steps);
+    navigator.clipboard.writeText(t).then(()=>{ setCopied('Copied!'); setTimeout(()=>setCopied(''),2000); })
+      .catch(()=>{ setCopied('Failed'); setTimeout(()=>setCopied(''),2000); });
+  }
+
+  function doPNG(){
+    if(!resRef.current||!window.html2canvas) return;
+    html2canvas(resRef.current,{backgroundColor:dark?'#0a1628':'#f8fafc',scale:2})
+      .then(c=>{ const a=document.createElement('a'); a.download=`zeff-${result.el.sym}-${result.orb}.png`; a.href=c.toDataURL(); a.click(); });
+  }
+
+  function doPDF(){
+    if(!result||!window.jspdf) return;
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF();
+    const lines=doc.splitTextToSize(buildTxt(result.el,result.orb,result.Z,result.S,result.Zeff,result.steps),170);
+    doc.setFont('helvetica'); doc.setFontSize(12);
+    doc.text(lines,20,20);
+    doc.save(`zeff-${result.el.sym}-${result.orb}.pdf`);
+  }
+
+  function doShare(){
+    if(!result) return;
+    const t=buildTxt(result.el,result.orb,result.Z,result.S,result.Zeff,result.steps);
+    if(navigator.share){ navigator.share({title:'Zeff – Albert & Einstein',text:t}); }
+    else doCopy();
+  }
+
+  const ql=q.toLowerCase().trim();
+  function isMatch(e){
+    if(!ql) return false;
+    return e.sym.toLowerCase().startsWith(ql)||e.name.toLowerCase().includes(ql)||String(e.Z)===ql;
+  }
+
+  // Colour tokens for light/dark
+  const pageBg=dark
+    ?'bg-gradient-to-br from-[#050d1c] via-[#0a1628] to-[#0d1f3c] text-white'
+    :'bg-gradient-to-br from-slate-50 via-blue-50/40 to-cyan-50/30 text-slate-900';
+  const hdrBg=dark?'bg-[#050d1c]/90 border-white/10':'bg-white/90 border-slate-200';
+  const card=dark?'bg-white/[0.05] border border-white/10':'bg-white border border-slate-200 shadow-sm';
+  const inp=dark
+    ?'bg-white/10 border border-white/20 text-white placeholder-white/40 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400'
+    :'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500';
+
+  // ── Periodic Table Renderer ──
+  function renderRows(rowKeys){
+    return rowKeys.map(r=>(
+      <div key={r} className="flex gap-0.5">
+        {Array.from({length:18},(_,i)=>i+1).map(col=>{
+          const e=PT_GRID[r]?.[col];
+          if(!e) return <div key={col} style={{width:52,height:52,flexShrink:0}} className="hidden sm:block"/>;
+          const cls=[
+            'el',`c-${e.cat}`,
+            sel?.Z===e.Z?'sel':'',
+            isMatch(e)?'smatch':'',
+          ].filter(Boolean).join(' ');
+          return(
+            <div key={e.Z} className={cls} title={e.name}
+              onClick={()=>{ setSel(e); setResult(null); setTab('table'); }}>
+              <span className="z">{e.Z}</span>
+              <span className="s">{e.sym}</span>
+              <span className="n">{e.name}</span>
+            </div>
+          );
+        })}
+      </div>
+    ));
+  }
+
+  const favEls=ELEMENTS.filter(e=>favs.some(f=>f.Z===e.Z));
+
+  return(
+    <div className={`${pageBg} min-h-screen`}>
+
+      {/* ── HEADER ── */}
+      <header className={`sticky top-0 z-50 ${hdrBg} backdrop-blur-lg border-b`}>
+        <div className="max-w-[1400px] mx-auto px-4 py-3 flex items-center gap-3">
+          {/* Logo */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-xl shadow-lg shadow-cyan-500/30">⚛</div>
+            <div>
+              <div className="font-black text-base leading-none bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">Albert &amp; Einstein</div>
+              <div className={`text-xs ${dark?'text-white/45':'text-slate-500'}`}>Zeff Calculator</div>
+            </div>
+          </div>
+
+          {/* Search – desktop */}
+          <div className="flex-1 hidden sm:block max-w-sm">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm opacity-40">🔍</span>
+              <input type="text" placeholder="Search by name, symbol or Z…"
+                value={q} onChange={e=>setQ(e.target.value)}
+                className={`w-full pl-9 pr-3 py-1.5 rounded-xl text-sm outline-none transition-all ${inp}`}/>
+            </div>
+          </div>
+
+          <div className="ml-auto flex items-center gap-2">
+            <button onClick={()=>setDark(d=>!d)}
+              className={`p-2 rounded-xl transition-all text-lg ${dark?'bg-white/10 hover:bg-white/20':'bg-slate-100 hover:bg-slate-200'}`}
+              title="Toggle theme">
+              {dark?'☀️':'🌙'}
+            </button>
+          </div>
+        </div>
+        {/* Search – mobile */}
+        <div className="sm:hidden px-4 pb-3">
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm opacity-40">🔍</span>
+            <input type="text" placeholder="Search element…"
+              value={q} onChange={e=>setQ(e.target.value)}
+              className={`w-full pl-9 pr-3 py-1.5 rounded-xl text-sm outline-none transition-all ${inp}`}/>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-[1400px] mx-auto px-4 py-6 space-y-5">
+
+        {/* ── TABS ── */}
+        <div className={`flex gap-1 rounded-2xl p-1 w-fit ${dark?'bg-white/5':'bg-slate-100'}`}>
+          {[['table','🧪 Periodic Table'],['history','🕑 History'],['favorites','⭐ Favourites']].map(([k,lbl])=>(
+            <button key={k} onClick={()=>setTab(k)}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                tab===k
+                  ?'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                  :dark?'text-white/55 hover:text-white':'text-slate-500 hover:text-slate-700'
+              }`}>
+              {lbl}
+            </button>
+          ))}
+        </div>
+
+        {/* ── PERIODIC TABLE TAB ── */}
+        {tab==='table'&&(
+          <div className="space-y-5 anim-fade">
+
+            {/* Periodic Table Card */}
+            <div className={`rounded-2xl p-4 ${card}`}>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-bold">
+                  {sel ? `Selected: ${sel.name}` : '👆 Click any element to begin'}
+                </h2>
+                <span className={`text-xs ${dark?'text-white/40':'text-slate-400'}`}>118 elements</span>
+              </div>
+              {/* Main periodic table */}
+              <div className="pt-scroll">
+                <div className="flex flex-col gap-0.5" style={{minWidth:54*18}}>
+                  {renderRows([1,2,3,4,5,6,7])}
+                </div>
+              </div>
+              {/* f-block separator */}
+              <div className="mt-3 mb-1 flex items-center gap-2">
+                <div className={`flex-1 h-px ${dark?'bg-white/10':'bg-slate-200'}`}/>
+                <span className={`text-xs ${dark?'text-white/30':'text-slate-400'}`}>Lanthanides & Actinides</span>
+                <div className={`flex-1 h-px ${dark?'bg-white/10':'bg-slate-200'}`}/>
+              </div>
+              <div className="pt-scroll">
+                <div className="flex flex-col gap-0.5" style={{minWidth:54*18}}>
+                  {renderRows([9,10])}
+                </div>
+              </div>
+              <Legend/>
+            </div>
+
+            {/* Element panel */}
+            {sel?(
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+                {/* LEFT: Element info + orbital selector */}
+                <div className="space-y-4">
+
+                  {/* Element Info Card */}
+                  <div className={`rounded-2xl p-5 ${card} anim-up`}>
+                    <div className="flex items-start gap-4">
+                      {/* Big element tile */}
+                      <div className={`el c-${sel.cat} flex-shrink-0`}
+                           style={{width:80,height:80,borderRadius:14,fontSize:'inherit'}}>
+                        <span style={{fontSize:10,opacity:.85}}>{sel.Z}</span>
+                        <span style={{fontSize:30,fontWeight:900,lineHeight:1}}>{sel.sym}</span>
+                        <span style={{fontSize:9,opacity:.7}}>{sel.name}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h2 className="font-black text-xl truncate">{sel.name}</h2>
+                          <button onClick={toggleFav} className="text-xl flex-shrink-0 hover:scale-125 transition-transform" title={isFav?'Remove favourite':'Add favourite'}>
+                            {isFav?'⭐':'☆'}
+                          </button>
+                        </div>
+                        <p className={`text-sm ${dark?'text-white/55':'text-slate-500'}`}>
+                          {sel.sym} &nbsp;·&nbsp; Z = {sel.Z} &nbsp;·&nbsp; {sel.cat.replace('-',' ')}
+                        </p>
+                        <div className={`mt-2 px-3 py-1.5 rounded-xl font-mono text-xs break-all leading-relaxed ${dark?'bg-white/10':'bg-slate-100 text-slate-700'}`}>
+                          {cfgStr}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Orbital Selector */}
+                  <div className={`rounded-2xl p-5 ${card} anim-up`}>
+                    <h3 className={`text-xs font-bold uppercase tracking-widest mb-3 ${dark?'text-white/40':'text-slate-400'}`}>
+                      Step 2 — Choose an Orbital
+                    </h3>
+
+                    {/* Orbital quick-pick pills */}
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {orbs.map(o=>(
+                        <button key={o} onClick={()=>{ setOrb(o); setResult(null); }}
+                          className={`px-3 py-1.5 rounded-lg font-mono text-sm font-semibold transition-all ${
+                            orb===o
+                              ?'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/30'
+                              :dark?'bg-white/10 hover:bg-white/20 text-white/70':'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                          }`}>
+                          {o}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Custom styled dropdown – no native select glitch */}
+                    <OrbitalDropdown
+                      orbs={orbs}
+                      orb={orb}
+                      dark={dark}
+                      onSelect={o=>{ setOrb(o); setResult(null); }}
+                    />
+
+                    <button onClick={calc}
+                      className="w-full py-3 rounded-xl font-bold text-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-400 hover:to-blue-500 transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:-translate-y-0.5 active:translate-y-0">
+                      ⚡ Calculate Z<sub>eff</sub>
+                    </button>
+                  </div>
+                </div>
+
+                {/* RIGHT: Results panel */}
+                <div>
+                  {result?(
+                    <div ref={resRef} className="space-y-4 anim-up">
+
+                      {/* Gauge + numbers */}
+                      <div className={`rounded-2xl p-5 ${card}`}>
+                        <h3 className={`text-xs font-bold uppercase tracking-widest mb-4 ${dark?'text-white/40':'text-slate-400'}`}>Results</h3>
+                        <div className="flex justify-around flex-wrap gap-3">
+                          <Gauge label="Z" value={result.Z} max={118} c1="#3b82f6" c2="#1d4ed8"/>
+                          <Gauge label="S" value={result.S} max={result.Z} c1="#8b5cf6" c2="#7c3aed"/>
+                          <Gauge label="Zeff" value={result.Zeff} max={result.Z} c1="#06b6d4" c2="#0891b2"/>
+                        </div>
+
+                        {/* Value boxes */}
+                        <div className="grid grid-cols-3 gap-3 mt-4">
+                          {[
+                            {l:'Z',v:result.Z,g:'from-blue-600 to-blue-800'},
+                            {l:'S',v:result.S.toFixed(2),g:'from-purple-600 to-purple-800'},
+                            {l:'Zeff',v:result.Zeff.toFixed(2),g:'from-cyan-500 to-cyan-700'},
+                          ].map(x=>(
+                            <div key={x.l} className={`rounded-xl p-3 bg-gradient-to-br ${x.g} text-white text-center shadow-lg`}>
+                              <div className="font-mono font-black text-2xl">{x.v}</div>
+                              <div className="text-xs opacity-75 mt-0.5">{x.l}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Formula */}
+                        <div className={`mt-3 rounded-xl p-3 text-center ${dark?'bg-white/5':'bg-slate-50'}`}>
+                          <span className="font-mono text-base font-bold">
+                            Z<sub>eff</sub> = {result.Z} − {result.S.toFixed(2)} = <span className="text-cyan-400">{result.Zeff.toFixed(2)}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Step-by-step */}
+                      <div className={`rounded-2xl p-5 ${card}`}>
+                        <h3 className={`text-xs font-bold uppercase tracking-widest mb-3 ${dark?'text-white/40':'text-slate-400'}`}>
+                          📐 Step-by-Step Slater's Rules
+                        </h3>
+                        <div className={`mb-3 rounded-xl px-4 py-2.5 text-sm ${dark?'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20':'bg-cyan-50 text-cyan-700 border border-cyan-200'}`}>
+                          Electron in <span className="font-mono font-bold">{result.orb}</span> of <span className="font-semibold">{result.el.name}</span>
+                          {' '}<span className={dark?'text-white/40':'text-slate-400'}>({result.el.sym})</span>
+                        </div>
+
+                        <div className="space-y-2">
+                          {result.steps.map((st,i)=>{
+                            const cm={
+                              cyan:{bg:dark?'rgba(6,182,212,0.1)':'rgba(6,182,212,0.08)',brd:'rgba(6,182,212,0.3)',tx:'#06b6d4'},
+                              blue:{bg:dark?'rgba(59,130,246,0.1)':'rgba(59,130,246,0.08)',brd:'rgba(59,130,246,0.3)',tx:'#3b82f6'},
+                              purple:{bg:dark?'rgba(139,92,246,0.1)':'rgba(139,92,246,0.08)',brd:'rgba(139,92,246,0.3)',tx:'#8b5cf6'},
+                            };
+                            const c=cm[st.col]||cm.cyan;
+                            return(
+                              <div key={i} className="rounded-xl p-3 flex items-center justify-between gap-3"
+                                   style={{background:c.bg,border:`1px solid ${c.brd}`}}>
+                                <div>
+                                  <div className="font-semibold text-sm" style={{color:c.tx}}>{st.label}</div>
+                                  <div className="text-xs opacity-65 font-mono mt-0.5">{st.detail}</div>
+                                </div>
+                                <div className="font-mono font-bold text-sm flex-shrink-0" style={{color:c.tx}}>+{st.val.toFixed(4)}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Total S */}
+                        <div className={`mt-3 rounded-xl p-3 ${dark?'bg-white/5':'bg-slate-50'}`}>
+                          <div className={`text-xs font-semibold mb-1 ${dark?'text-white/45':'text-slate-500'}`}>Total Shielding Constant</div>
+                          <div className="font-mono font-black text-base">
+                            S = {result.steps.map(s=>s.val.toFixed(4)).join(' + ')} = <span className="text-purple-400">{result.S.toFixed(4)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          {l:copied||'📋 Copy', fn:doCopy, g:'from-slate-600 to-slate-700'},
+                          {l:'🖼 PNG',           fn:doPNG,  g:'from-emerald-600 to-emerald-700'},
+                          {l:'📄 PDF',           fn:doPDF,  g:'from-red-600 to-red-700'},
+                          {l:'🔗 Share',         fn:doShare,g:'from-violet-600 to-violet-700'},
+                        ].map(b=>(
+                          <button key={b.l} onClick={b.fn}
+                            className={`py-2.5 rounded-xl text-white font-semibold text-xs sm:text-sm bg-gradient-to-br ${b.g} hover:opacity-90 transition-all hover:-translate-y-0.5 shadow-md`}>
+                            {b.l}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ):(
+                    <div className={`rounded-2xl p-8 ${card} flex flex-col items-center justify-center text-center min-h-64 anim-fade`}>
+                      <div className="text-5xl mb-3 anim-glow">⚗️</div>
+                      <h3 className="font-bold text-lg mb-2">Ready to Calculate</h3>
+                      <p className={`text-sm max-w-xs ${dark?'text-white/45':'text-slate-500'}`}>
+                        Choose an orbital above, then hit <strong>Calculate Z<sub>eff</sub></strong> to see the full Slater's Rules breakdown.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ):(
+              /* Welcome screen */
+              <div className={`rounded-2xl p-10 ${card} flex flex-col items-center justify-center text-center anim-fade`}>
+                <div className="text-7xl mb-5 anim-glow">⚛️</div>
+                <h2 className="font-black text-3xl mb-3 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                  Welcome to Albert &amp; Einstein
+                </h2>
+                <p className={`text-base max-w-lg mb-6 ${dark?'text-white/50':'text-slate-500'}`}>
+                  Click any element on the periodic table to calculate its Effective Nuclear Charge (Z<sub>eff</sub>) using Slater's Rules — with a full step-by-step explanation.
+                </p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  {[{Z:1,sym:'H',hint:'Hydrogen'},{Z:5,sym:'B',hint:'Boron'},{Z:26,sym:'Fe',hint:'Iron'},{Z:29,sym:'Cu',hint:'Copper'},{Z:79,sym:'Au',hint:'Gold'}].map(q=>(
+                    <button key={q.Z}
+                      onClick={()=>setSel(ELEMENTS.find(e=>e.Z===q.Z))}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-br from-cyan-500/15 to-blue-600/15 border border-cyan-500/25 text-cyan-400 hover:border-cyan-400/50 transition-all hover:-translate-y-0.5 shadow-sm">
+                      <span className="font-mono font-black">{q.sym}</span>
+                      <span className="text-xs opacity-70">{q.hint}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className={`mt-6 text-xs ${dark?'text-white/25':'text-slate-400'}`}>
+                  Or use the 🔍 search bar to find any element instantly
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── HISTORY TAB ── */}
+        {tab==='history'&&(
+          <div className={`rounded-2xl p-5 ${card} anim-fade`}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-lg">Recent Calculations</h2>
+              {history.length>0&&(
+                <button onClick={()=>setHistory([])}
+                  className="text-xs text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 px-3 py-1 rounded-lg transition-all">
+                  Clear All
+                </button>
+              )}
+            </div>
+            {history.length===0?(
+              <div className={`text-center py-12 ${dark?'text-white/30':'text-slate-400'}`}>
+                <div className="text-4xl mb-3">🕑</div>
+                <p>No calculations yet. Calculate Z<sub>eff</sub> for an element to see it here.</p>
+              </div>
+            ):(
+              <div className="hist space-y-2 max-h-96 overflow-y-auto pr-1">
+                {history.slice().reverse().map((h,i)=>(
+                  <div key={i} className={`rounded-xl p-3 cursor-pointer transition-all hover:-translate-y-0.5 ${dark?'bg-white/5 hover:bg-white/10 border border-white/8':'bg-slate-50 hover:bg-slate-100 border border-slate-100'}`}
+                    onClick={()=>{ setSel(h.el); setOrb(h.orb); setResult({Z:h.Z,S:h.S,Zeff:h.Zeff,steps:h.steps,orb:h.orb,el:h.el}); setTab('table'); }}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-cyan-400 font-mono">{h.sym}</span>
+                        <span className={`text-sm ${dark?'text-white/60':'text-slate-600'}`}>{h.name}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-400 font-mono">{h.orb}</span>
+                      </div>
+                      <div className="font-mono font-bold text-sm text-cyan-300">Zeff = {h.Zeff.toFixed(2)}</div>
+                    </div>
+                    <div className={`text-xs mt-1 ${dark?'text-white/30':'text-slate-400'}`}>{h.ts}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── FAVOURITES TAB ── */}
+        {tab==='favorites'&&(
+          <div className={`rounded-2xl p-5 ${card} anim-fade`}>
+            <h2 className="font-bold text-lg mb-4">Favourite Elements</h2>
+            {favEls.length===0?(
+              <div className={`text-center py-12 ${dark?'text-white/30':'text-slate-400'}`}>
+                <div className="text-4xl mb-3">⭐</div>
+                <p>No favourites yet. Click ☆ next to an element to save it here.</p>
+              </div>
+            ):(
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                {favEls.map(e=>(
+                  <div key={e.Z}
+                    className={`el c-${e.cat} rounded-xl cursor-pointer transition-all hover:-translate-y-1`}
+                    style={{width:'auto',height:'auto',padding:'12px 8px',flexDirection:'column',display:'flex',alignItems:'center',gap:2}}
+                    onClick={()=>{ setSel(e); setTab('table'); }}>
+                    <span style={{fontSize:11,opacity:.8}}>{e.Z}</span>
+                    <span style={{fontSize:22,fontWeight:900}}>{e.sym}</span>
+                    <span style={{fontSize:10,opacity:.7,textAlign:'center'}}>{e.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── FOOTER ── */}
+        <footer className={`text-center text-xs py-4 ${dark?'text-white/25':'text-slate-400'}`}>
+          Albert &amp; Einstein · Zeff Calculator · Slater's Rules (1930) · All 118 Elements · Built for chemistry students
+        </footer>
+      </main>
+    </div>
+  );
+}
+
+// Render
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
