@@ -665,21 +665,24 @@ function App(){
   const orbs=useMemo(()=>getOrbitals(cfg),[cfg]);
   const cfgStr=useMemo(()=>fmtConfig(cfg),[cfg]);
 
-  // When an element is selected, default to the outermost (valence) orbital and auto-calculate
-  useEffect(()=>{
-    if(sel && orbs.length){
-      const valenceOrb = orbs[orbs.length - 1];
-      setOrb(valenceOrb);
-      const r = slater(cfg, valenceOrb);
+  // Select an element, picking its valence orbital (or specified target orbital), and calculate
+  function selectElement(element, targetOrb = null){
+    if(!element) return;
+    setSel(element);
+    const elementCfg = getConfig(element.Z);
+    const elementOrbs = getOrbitals(elementCfg);
+    const chosenOrb = targetOrb || (elementOrbs.length ? elementOrbs[elementOrbs.length - 1] : '');
+    setOrb(chosenOrb);
+    if(chosenOrb){
+      const r = slater(elementCfg, chosenOrb);
       if(r){
-        const Z=sel.Z, S=r.S, Zeff=parseFloat((Z-S).toFixed(2));
-        setResult({Z,S,Zeff,steps:r.steps,orb:valenceOrb,el:sel});
+        const Z = element.Z, S = r.S, Zeff = parseFloat((Z - S).toFixed(2));
+        setResult({Z, S, Zeff, steps: r.steps, orb: chosenOrb, el: element});
       }
     } else {
-      setOrb('');
       setResult(null);
     }
-  },[sel]);
+  }
 
   function executeCalc(targetOrb){
     const useOrb = targetOrb || orb;
@@ -782,7 +785,7 @@ function App(){
           ].filter(Boolean).join(' ');
           return(
             <div key={e.Z} className={cls} title={e.name}
-              onClick={()=>{ setSel(e); setTab('table'); }}>
+              onClick={()=>{ selectElement(e); setTab('table'); }}>
               <span className="z">{e.Z}</span>
               <span className="s">{e.sym}</span>
               <span className="n">{e.name}</span>
@@ -816,6 +819,7 @@ function App(){
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm opacity-40">🔍</span>
               <input type="text" placeholder="Search by name, symbol or Z…"
                 value={q} onChange={e=>setQ(e.target.value)}
+                onKeyDown={e=>{ if(e.key==='Enter' && q.trim()){ const m=ELEMENTS.find(el=>isMatch(el)); if(m){ selectElement(m); setTab('table'); setQ(''); } } }}
                 className={`w-full pl-9 pr-3 py-1.5 rounded-xl text-sm outline-none transition-all ${inp}`}/>
             </div>
           </div>
@@ -834,6 +838,7 @@ function App(){
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm opacity-40">🔍</span>
             <input type="text" placeholder="Search element…"
               value={q} onChange={e=>setQ(e.target.value)}
+              onKeyDown={e=>{ if(e.key==='Enter' && q.trim()){ const m=ELEMENTS.find(el=>isMatch(el)); if(m){ selectElement(m); setTab('table'); setQ(''); } } }}
               className={`w-full pl-9 pr-3 py-1.5 rounded-xl text-sm outline-none transition-all ${inp}`}/>
           </div>
         </div>
@@ -1077,7 +1082,7 @@ function App(){
                 <div className="flex flex-wrap justify-center gap-3">
                   {[{Z:1,sym:'H',hint:'Hydrogen'},{Z:5,sym:'B',hint:'Boron'},{Z:26,sym:'Fe',hint:'Iron'},{Z:29,sym:'Cu',hint:'Copper'},{Z:79,sym:'Au',hint:'Gold'}].map(q=>(
                     <button key={q.Z}
-                      onClick={()=>setSel(ELEMENTS.find(e=>e.Z===q.Z))}
+                      onClick={()=>selectElement(ELEMENTS.find(e=>e.Z===q.Z))}
                       className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-br from-cyan-500/15 to-blue-600/15 border border-cyan-500/25 text-cyan-400 hover:border-cyan-400/50 transition-all hover:-translate-y-0.5 shadow-sm">
                       <span className="font-mono font-black">{q.sym}</span>
                       <span className="text-xs opacity-70">{q.hint}</span>
@@ -1113,7 +1118,7 @@ function App(){
               <div className="hist space-y-2 max-h-96 overflow-y-auto pr-1">
                 {history.slice().reverse().map((h,i)=>(
                   <div key={i} className={`rounded-xl p-3 cursor-pointer transition-all hover:-translate-y-0.5 ${dark?'bg-white/5 hover:bg-white/10 border border-white/8':'bg-slate-50 hover:bg-slate-100 border border-slate-100'}`}
-                    onClick={()=>{ setSel(h.el); setOrb(h.orb); setResult({Z:h.Z,S:h.S,Zeff:h.Zeff,steps:h.steps,orb:h.orb,el:h.el}); setTab('table'); }}>
+                    onClick={()=>{ selectElement(h.el, h.orb); setTab('table'); }}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="font-black text-cyan-400 font-mono">{h.sym}</span>
@@ -1145,7 +1150,7 @@ function App(){
                   <div key={e.Z}
                     className={`el c-${e.cat} rounded-xl cursor-pointer transition-all hover:-translate-y-1`}
                     style={{width:'auto',height:'auto',padding:'12px 8px',flexDirection:'column',display:'flex',alignItems:'center',gap:2}}
-                    onClick={()=>{ setSel(e); setTab('table'); }}>
+                    onClick={()=>{ selectElement(e); setTab('table'); }}>
                     <span style={{fontSize:11,opacity:.8}}>{e.Z}</span>
                     <span style={{fontSize:22,fontWeight:900}}>{e.sym}</span>
                     <span style={{fontSize:10,opacity:.7,textAlign:'center'}}>{e.name}</span>
