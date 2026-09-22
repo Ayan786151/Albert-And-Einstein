@@ -415,8 +415,8 @@ function slater(cfg, orbital){
     const outer=cfg.filter(c=>c.n>n || (c.n===n && c.l>1)).reduce((a,c)=>a+c.c,0);
     if(outer>0){
       steps.push({
-        label:`Outer Electrons (n > ${n})`,
-        detail:`${outer} electron${outer>1?'s':''} × 0.00 (outer shell, no shielding)`,
+        label:`Outer Groups (outside [${n}s,${n>1?n+'p':'1s'}] in Slater order)`,
+        detail:`${outer} electron${outer>1?'s':''} × 0.00 (no shielding)`,
         val:0.00,
         col:'slate'
       });
@@ -689,7 +689,13 @@ function App(){
     const Z=sel.Z, S=r.S, Zeff=parseFloat((Z-S).toFixed(2));
     setOrb(useOrb);
     setResult({Z,S,Zeff,steps:r.steps,orb:useOrb,el:sel});
-    setHistory(p=>[...p.slice(-49),{Z,S,Zeff,orb:useOrb,sym:sel.sym,name:sel.name,steps:r.steps,el:sel,ts:new Date().toLocaleString()}]);
+    setHistory(p=>{
+      if(p.length>0){
+        const last=p[p.length-1];
+        if(last.Z===sel.Z && last.orb===useOrb) return p;
+      }
+      return [...p.slice(-49),{Z,S,Zeff,orb:useOrb,sym:sel.sym,name:sel.name,steps:r.steps,el:sel,ts:new Date().toLocaleString()}];
+    });
   }
 
   const isFav=sel?favs.some(f=>f.Z===sel.Z):false;
@@ -1027,7 +1033,7 @@ function App(){
                         <div className={`mt-3 rounded-xl p-3 ${dark?'bg-white/5':'bg-slate-50'}`}>
                           <div className={`text-xs font-semibold mb-1 ${dark?'text-white/45':'text-slate-500'}`}>Total Shielding Constant</div>
                           <div className="font-mono font-black text-base">
-                            S = {result.steps.filter(s=>s.val>0||result.steps.length===1).map(s=>s.val.toFixed(2)).join(' + ')} = <span className="text-purple-400">{result.S.toFixed(2)}</span>
+                            S = {result.steps.filter(s=>s.col!=='slate').map(s=>s.val.toFixed(2)).join(' + ')} = <span className="text-purple-400">{result.S.toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
